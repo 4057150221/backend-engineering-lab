@@ -144,13 +144,100 @@ JSON 响应、201 与 422
 
 测试客户端提交JSON时，查清`client.post()`的`json`参数，而不是手工拼接JSON字符串。
 
+## 第三部分：内存CRUD、路径参数、查询参数与HTTP异常
+
+这一部分仍属于Day 1。目标是在接触数据库前，先理解一条资源从创建到删除的完整HTTP生命周期。
+
+### 先读什么
+
+只阅读官方文档的以下章节：
+
+1. [Path Parameters](https://fastapi.tiangolo.com/tutorial/path-params/)
+2. [Query Parameters](https://fastapi.tiangolo.com/tutorial/query-params/)
+3. [Handling Errors](https://fastapi.tiangolo.com/tutorial/handling-errors/)
+
+阅读时回答：
+
+- FastAPI如何知道`item_id`来自URL路径，并把它转换为`int`？
+- 为什么`offset`和`limit`没有写在路径中，却会成为查询参数？
+- `raise HTTPException(...)`和`return`有什么控制流差异？
+
+### 临时数据模型与存储
+
+保留`ItemCreate`作为创建和修改请求体，再新增`ItemRead`作为响应模型：
+
+| 字段 | 类型 |
+|---|---|
+| `id` | `int` |
+| `title` | `str` |
+| `description` | `str | None` |
+
+用模块级字典临时模拟数据库，键为ID，值为`ItemRead`对象。ID可以用“当前最大ID加1”的简单规则生成；这是为了学习HTTP流程，明天接入数据库后会删除这种实现。
+
+### 检查点A：创建与按ID查询
+
+修改`POST /items`：
+
+- 为合法请求生成ID并构造`ItemRead`；
+- 保存到内存字典；
+- 返回`201`和包含ID的完整对象。
+
+新增`GET /items/{item_id}`：
+
+- `item_id`必须声明为`int`路径参数；
+- 找到时返回`200`和对应`ItemRead`；
+- 找不到时`raise HTTPException`，返回`404`和`{"detail": "Item not found"}`；
+- `/items/not-an-int`应由FastAPI自动返回`422`。
+
+### 检查点B：列表与查询参数
+
+新增`GET /items`，不要与`GET /items/{item_id}`混淆：
+
+- `offset`默认`0`，并限制为大于等于`0`；
+- `limit`默认`10`，并限制在`1`到`100`；
+- 按创建顺序返回切片后的`list[ItemRead]`；
+- 例如`GET /items?offset=1&limit=2`跳过第一项，最多返回两项；
+- 非法分页参数由FastAPI自动返回`422`。
+
+### 检查点C：修改与删除
+
+新增`PUT /items/{item_id}`：
+
+- 请求体继续使用`ItemCreate`；
+- 找到时保留原ID、替换标题和描述，返回`200`；
+- 找不到时返回与查询接口一致的`404`。
+
+新增`DELETE /items/{item_id}`：
+
+- 找到时删除资源并返回`204 No Content`；
+- `204`响应体必须为空；
+- 找不到时返回与查询接口一致的`404`。
+
+### 测试隔离
+
+内存字典会跨请求保留数据。为避免一个测试创建的数据污染另一个测试，在`tests/test_items.py`中使用pytest的`setup_function()`，在每个测试开始前清空字典。这里只清理教学用内存状态，不引入fixture或`conftest.py`。
+
+已有创建测试需要同步检查响应中的`id`。在此基础上至少新增：
+
+1. 创建后按ID查询成功；
+2. 查询不存在ID返回`404`并检查`detail`；
+3. 创建三项后，`offset/limit`切片正确；
+4. 非法分页参数返回`422`；
+5. 修改存在的资源时保留ID并更新内容；
+6. 修改不存在的资源返回`404`；
+7. 删除存在的资源返回`204`、响应体为空，随后查询得到`404`；
+8. 删除不存在的资源返回`404`。
+
+不要依赖测试执行顺序。全部完成后，测试数量预计不少于13个。
+
 ## 禁止项
 
 - 不增加数据库。
 - 不拆分router/service/model层。
 - 不复制成熟模板目录。
 - 不让AI生成核心实现或测试。
-- 不增加内存列表、ID、查询、修改或删除接口。
+- 只使用一个内存字典，不增加仓储类或全局状态管理框架。
+- 不增加搜索、排序、用户、认证或前端。
 - 不自定义422异常响应；先观察框架默认行为。
 
 ## 验收问题
@@ -167,6 +254,10 @@ JSON 响应、201 与 422
 8. Pydantic模型为什么既能用于类型提示，又能在运行时验证数据？
 9. 为什么缺少必填字段得到422，而不是进入函数后再由你写`if`判断？
 10. `None`在Python响应中为什么会变成JSON的`null`？
+11. 路径参数和查询参数在URL中的位置有什么区别？
+12. 为什么查询不存在资源需要主动抛出404，而路径类型错误会自动得到422？
+13. 为什么每个测试前必须清空内存字典？
+14. 为什么删除成功使用204时不能返回JSON内容？
 
 ## Git验收
 
@@ -176,10 +267,16 @@ JSON 响应、201 与 422
 39f18f7 feat: add health endpoint and test
 ```
 
-第二部分测试全部通过后，查看变更，再由你本人创建第二条提交。建议提交信息：
+第二部分的提交已经完成：
 
 ```text
-feat: validate item creation requests
+dc921e2 feat: validate item creation requests
+```
+
+第三部分测试全部通过后，由你本人创建第三条提交。建议提交信息：
+
+```text
+feat: add in-memory item CRUD
 ```
 
 提交前必须能够逐行解释自己新增的每段代码。
