@@ -1,12 +1,8 @@
 from fastapi.testclient import TestClient
 
-from app.main import app, items
+from app.main import app
 
 client = TestClient(app)
-
-
-def setup_function() -> None:
-    items.clear()
 
 
 def test_create_item_with_all_fields():

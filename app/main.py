@@ -1,18 +1,25 @@
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, HTTPException, Query
+from sqlalchemy.orm import Session
 
+from app import crud
+from app.database import get_session
+from app.models import Item
 from app.schemas import ItemCreate, ItemRead
 
 
-items: dict[int, ItemRead] = {}
+def _get_item_or_404(
+    session: Session,
+    item_id: int,
+) -> Item:
+    db_item = crud.get_item(
+        session=session,
+        item_id=item_id,
+    )
 
-
-def _get_item_or_404(item_id: int) -> ItemRead:
-    item = items.get(item_id)
-
-    if item is None:
+    if db_item is None:
         raise HTTPException(status_code=404, detail="Item not found")
 
-    return item
+    return db_item
 
 
 app = FastAPI()
@@ -23,48 +30,86 @@ async def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
-@app.post("/items", status_code=201)
-async def create_item(item: ItemCreate) -> ItemRead:
-    new_id = max(items.keys(), default=0) + 1
-    created_item = ItemRead(
-        id=new_id,
-        title=item.title,
-        description=item.description,
+@app.post(
+    "/items",
+    response_model=ItemRead,
+    status_code=201,
+)
+def create_item(
+    item_data: ItemCreate,
+    session: Session = Depends(get_session),
+) -> Item:
+    return crud.create_item(
+        session=session,
+        item_data=item_data,
     )
-    items[new_id] = created_item
-    return created_item
 
 
-@app.get("/items/{item_id}")
-async def read_item(item_id: int) -> ItemRead:
-    return _get_item_or_404(item_id)
+@app.get(
+    "/items/{item_id}",
+    response_model=ItemRead,
+)
+def read_item(
+    item_id: int,
+    session: Session = Depends(get_session),
+) -> Item:
+    return _get_item_or_404(
+        session=session,
+        item_id=item_id,
+    )
 
 
-@app.get("/items")
-async def read_items(
+@app.get(
+    "/items",
+    response_model=list[ItemRead],
+)
+def read_items(
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=10, ge=1, le=100),
-) -> list[ItemRead]:
-    all_items = list(items.values())
-    return all_items[offset : offset + limit]
-
-
-@app.put("/items/{item_id}")
-async def update_item(
-    item_id: int,
-    item: ItemCreate,
-) -> ItemRead:
-    _get_item_or_404(item_id)
-    updated_item = ItemRead(
-        id=item_id,
-        title=item.title,
-        description=item.description,
+    session: Session = Depends(get_session),
+) -> list[Item]:
+    return crud.get_items(
+        session=session,
+        offset=offset,
+        limit=limit,
     )
-    items[item_id] = updated_item
-    return updated_item
 
 
-@app.delete("/items/{item_id}", status_code=204)
-async def delete_item(item_id: int) -> None:
-    _get_item_or_404(item_id)
-    del items[item_id]
+@app.put(
+    "/items/{item_id}",
+    response_model=ItemRead,
+)
+def update_item(
+    item_id: int,
+    item_data: ItemCreate,
+    session: Session = Depends(get_session),
+) -> Item:
+    db_item = _get_item_or_404(
+        session=session,
+        item_id=item_id,
+    )
+
+    return crud.update_item(
+        session=session,
+        db_item=db_item,
+        item_data=item_data,
+    )
+
+
+@app.delete(
+    "/items/{item_id}",
+    status_code=204,
+)
+def delete_item(
+    item_id: int,
+    session: Session = Depends(get_session),
+) -> None:
+    db_item = _get_item_or_404(
+        session=session,
+        item_id=item_id,
+    )
+
+    crud.delete_item(
+        session=session,
+        db_item=db_item,
+    )
