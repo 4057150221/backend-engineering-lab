@@ -11,9 +11,13 @@
 
 ## 当前阶段
 
-Day 1：解释器、虚拟环境、包与模块、最小 HTTP API、首个自动化测试。
+Day 1 已完成：解释器、虚拟环境、包与模块、HTTP API、内存 CRUD 和自动化测试。
 
-具体任务见 [learning/day-01.md](learning/day-01.md)。
+Day 2 已完成：SQLAlchemy ORM、PostgreSQL、Docker Compose、数据库 CRUD、FastAPI Session 依赖与隔离测试。
+
+- 任务说明：[learning/day-01.md](learning/day-01.md)、[learning/day-02.md](learning/day-02.md)
+- 复盘索引：[notes/README.md](notes/README.md)
+- 每日笔记：[notes/day-01.md](notes/day-01.md)、[notes/day-02.md](notes/day-02.md)
 
 ## 计划中的目录
 
@@ -36,4 +40,3 @@ tests/
 3. 自动测试认证、CRUD、权限、搜索和异常流程；
 4. 由学习者脱离教程与 AI 重写一条完整业务链路；
 5. 为简历中的每项技术声明提供代码、测试或提交记录证据。
-
