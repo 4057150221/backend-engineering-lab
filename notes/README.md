@@ -8,6 +8,9 @@
 |---|---|---|
 | Day 1 | Python、HTTP、FastAPI、Pydantic、内存 CRUD、pytest | [day-01.md](day-01.md) |
 | Day 2 | SQLAlchemy、PostgreSQL、Docker、Session、依赖注入、测试隔离 | [day-02.md](day-02.md) |
+| Day 3 | Alembic、结构迁移、revision、upgrade、downgrade、stamp | [day-03.md](day-03.md) |
+
+常用操作集中在[项目命令速查](commands.md)，供使用时查询，不要求逐字背诵。
 
 ## 使用方法
 
