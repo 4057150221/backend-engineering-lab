@@ -17,9 +17,11 @@ Day 2 已完成：SQLAlchemy ORM、PostgreSQL、Docker Compose、数据库 CRUD�
 
 Day 3 已完成：Alembic 初始化迁移、空库升级与回退验证、已有数据库版本基线。
 
-- 任务说明：[learning/day-01.md](learning/day-01.md)、[learning/day-02.md](learning/day-02.md)、[learning/day-03.md](learning/day-03.md)
+Day 4 已完成：用户注册、邮箱与密码校验、Argon2id 密码哈希、用户表迁移和接口测试。
+
+- 任务说明：[learning/day-01.md](learning/day-01.md)、[learning/day-02.md](learning/day-02.md)、[learning/day-03.md](learning/day-03.md)、[learning/day-04.md](learning/day-04.md)
 - 复盘索引：[notes/README.md](notes/README.md)
-- 每日笔记：[notes/day-01.md](notes/day-01.md)、[notes/day-02.md](notes/day-02.md)、[notes/day-03.md](notes/day-03.md)
+- 每日笔记：[notes/day-01.md](notes/day-01.md)、[notes/day-02.md](notes/day-02.md)、[notes/day-03.md](notes/day-03.md)、[notes/day-04.md](notes/day-04.md)
 - 常用命令：[notes/commands.md](notes/commands.md)
 
 ## 计划中的目录

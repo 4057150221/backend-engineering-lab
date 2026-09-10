@@ -1,0 +1,4 @@
+-r requirements-day1.txt
+-r requirements-day2.txt
+pwdlib[argon2]>=0.2,<1.0
+email-validator>=2.2,<3.0

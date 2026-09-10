@@ -1,8 +1,9 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import Item
-from app.schemas import ItemCreate
+from app.models import Item, User
+from app.schemas import ItemCreate, UserCreate
+from app.security import hash_password
 
 
 def create_item(
@@ -62,3 +63,27 @@ def delete_item(
 ) -> None:
     session.delete(db_item)
     session.commit()
+
+
+def get_user_by_email(
+    session: Session,
+    email: str,
+) -> User | None:
+    statement = select(User).where(User.email == email)
+    return session.scalar(statement)
+
+
+def create_user(
+    session: Session,
+    user_data: UserCreate,
+) -> User:
+    db_user = User(
+        email=str(user_data.email),
+        hashed_password=hash_password(user_data.password),
+    )
+
+    session.add(db_user)
+    session.commit()
+    session.refresh(db_user)
+
+    return db_user

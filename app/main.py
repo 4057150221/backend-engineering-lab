@@ -3,8 +3,8 @@ from sqlalchemy.orm import Session
 
 from app import crud
 from app.database import get_session
-from app.models import Item
-from app.schemas import ItemCreate, ItemRead
+from app.models import Item, User
+from app.schemas import ItemCreate, ItemRead, UserCreate, UserRead
 
 
 def _get_item_or_404(
@@ -28,6 +28,32 @@ app = FastAPI()
 @app.get("/health")
 async def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.post(
+    "/users",
+    response_model=UserRead,
+    status_code=201,
+)
+def create_user(
+    user_data: UserCreate,
+    session: Session = Depends(get_session),
+) -> User:
+    existing_user = crud.get_user_by_email(
+        session=session,
+        email=str(user_data.email),
+    )
+
+    if existing_user is not None:
+        raise HTTPException(
+            status_code=409,
+            detail="Email already registered",
+        )
+
+    return crud.create_user(
+        session=session,
+        user_data=user_data,
+    )
 
 
 @app.post(
