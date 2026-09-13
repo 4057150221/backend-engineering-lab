@@ -1,0 +1,3 @@
+-r requirements-day4.txt
+PyJWT>=2.10,<3.0
+python-multipart>=0.0.20,<1.0

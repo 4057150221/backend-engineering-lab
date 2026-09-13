@@ -1,10 +1,13 @@
 from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from jwt.exceptions import InvalidTokenError
 from sqlalchemy.orm import Session
 
 from app import crud
 from app.database import get_session
 from app.models import Item, User
-from app.schemas import ItemCreate, ItemRead, UserCreate, UserRead
+from app.schemas import ItemCreate, ItemRead, Token, UserCreate, UserRead
+from app.security import create_access_token, decode_access_token
 
 
 def _get_item_or_404(
@@ -23,6 +26,7 @@ def _get_item_or_404(
 
 
 app = FastAPI()
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
 @app.get("/health")
@@ -139,3 +143,62 @@ def delete_item(
         session=session,
         db_item=db_item,
     )
+
+
+@app.post(
+    "/token",
+    response_model=Token,
+)
+def login_for_access_token(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    session: Session = Depends(get_session),
+) -> Token:
+    email = form_data.username
+    plain_password = form_data.password
+
+    user = crud.authenticate_user(
+        session=session,
+        email=email,
+        plain_password=plain_password,
+    )
+
+    if user is None:
+        raise HTTPException(
+            status_code=401,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    access_token = create_access_token(user.id)
+    return Token(access_token=access_token, token_type="bearer")
+
+
+def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    session: Session = Depends(get_session),
+) -> User:
+    credentials_exception = HTTPException(
+        status_code=401,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        sub = decode_access_token(token)
+        user_id = int(sub)
+    except (InvalidTokenError, ValueError):
+        raise credentials_exception
+
+    user = session.get(User, user_id)
+    if user is None:
+        raise credentials_exception
+    return user
+
+
+@app.get(
+    "/users/me",
+    response_model=UserRead,
+)
+def read_current_user(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    return current_user

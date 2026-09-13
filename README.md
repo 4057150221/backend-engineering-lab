@@ -19,9 +19,11 @@ Day 3 已完成：Alembic 初始化迁移、空库升级与回退验证、已有
 
 Day 4 已完成：用户注册、邮箱与密码校验、Argon2id 密码哈希、用户表迁移和接口测试。
 
-- 任务说明：[learning/day-01.md](learning/day-01.md)、[learning/day-02.md](learning/day-02.md)、[learning/day-03.md](learning/day-03.md)、[learning/day-04.md](learning/day-04.md)
+Day 5 已完成：登录、JWT access token、Bearer 认证、当前用户依赖与认证接口测试。
+
+- 任务说明：[learning/day-01.md](learning/day-01.md)、[learning/day-02.md](learning/day-02.md)、[learning/day-03.md](learning/day-03.md)、[learning/day-04.md](learning/day-04.md)、[learning/day-05.md](learning/day-05.md)
 - 复盘索引：[notes/README.md](notes/README.md)
-- 每日笔记：[notes/day-01.md](notes/day-01.md)、[notes/day-02.md](notes/day-02.md)、[notes/day-03.md](notes/day-03.md)、[notes/day-04.md](notes/day-04.md)
+- 每日笔记：[notes/day-01.md](notes/day-01.md)、[notes/day-02.md](notes/day-02.md)、[notes/day-03.md](notes/day-03.md)、[notes/day-04.md](notes/day-04.md)、[notes/day-05.md](notes/day-05.md)
 - 常用命令：[notes/commands.md](notes/commands.md)
 
 ## 计划中的目录

@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.models import Item, User
 from app.schemas import ItemCreate, UserCreate
-from app.security import hash_password
+from app.security import hash_password, verify_password
 
 
 def create_item(
@@ -87,3 +87,19 @@ def create_user(
     session.refresh(db_user)
 
     return db_user
+
+
+def authenticate_user(
+    session: Session,
+    email: str,
+    plain_password: str,
+) -> User | None:
+    user = get_user_by_email(session, email)
+
+    if user is None:
+        return None
+
+    if not verify_password(plain_password, user.hashed_password):
+        return None
+
+    return user
