@@ -5,8 +5,16 @@ from sqlalchemy.orm import Session
 
 from app import crud
 from app.database import get_session
-from app.models import Item, User
-from app.schemas import ItemCreate, ItemRead, Token, UserCreate, UserRead
+from app.models import Item, User, Application
+from app.schemas import (
+    ItemCreate,
+    ItemRead,
+    Token,
+    UserCreate,
+    UserRead,
+    ApplicationCreate,
+    ApplicationRead,
+)
 from app.security import create_access_token, decode_access_token
 
 
@@ -23,6 +31,26 @@ def _get_item_or_404(
         raise HTTPException(status_code=404, detail="Item not found")
 
     return db_item
+
+
+def _get_application_or_404(
+    session: Session,
+    application_id: int,
+    owner_id: int,
+) -> Application:
+    db_application = crud.get_application(
+        session=session,
+        application_id=application_id,
+        owner_id=owner_id,
+    )
+
+    if db_application is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Application not found",
+        )
+
+    return db_application
 
 
 app = FastAPI()
@@ -202,3 +230,98 @@ def read_current_user(
     current_user: User = Depends(get_current_user),
 ) -> User:
     return current_user
+
+
+@app.post(
+    "/applications",
+    response_model=ApplicationRead,
+    status_code=201,
+)
+def create_application(
+    application_data: ApplicationCreate,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> Application:
+    return crud.create_application(
+        session=session,
+        application_data=application_data,
+        owner_id=current_user.id,
+    )
+
+
+@app.get(
+    "/applications/{application_id}",
+    response_model=ApplicationRead,
+)
+def read_application(
+    application_id: int,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> Application:
+    return _get_application_or_404(
+        session=session,
+        application_id=application_id,
+        owner_id=current_user.id,
+    )
+
+
+@app.get(
+    "/applications",
+    response_model=list[ApplicationRead],
+)
+def read_applications(
+    current_user: User = Depends(get_current_user),
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=10, ge=1, le=100),
+    session: Session = Depends(get_session),
+) -> list[Application]:
+    return crud.get_applications(
+        session=session,
+        owner_id=current_user.id,
+        offset=offset,
+        limit=limit,
+    )
+
+
+@app.put(
+    "/applications/{application_id}",
+    response_model=ApplicationRead,
+)
+def update_application(
+    application_id: int,
+    application_data: ApplicationCreate,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> Application:
+    db_application = _get_application_or_404(
+        session=session,
+        application_id=application_id,
+        owner_id=current_user.id,
+    )
+
+    return crud.update_application(
+        session=session,
+        db_application=db_application,
+        application_data=application_data,
+    )
+
+
+@app.delete(
+    "/applications/{application_id}",
+    status_code=204,
+)
+def delete_application(
+    application_id: int,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> None:
+    db_application = _get_application_or_404(
+        session=session,
+        application_id=application_id,
+        owner_id=current_user.id,
+    )
+
+    crud.delete_application(
+        session=session,
+        db_application=db_application,
+    )
