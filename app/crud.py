@@ -87,9 +87,36 @@ def create_application(
 
 # TODO(user): get_application(session, application_id, owner_id) -> Application | None
 #   必须在同一个 WHERE 里同时过滤 id 和 owner_id，不要先查到再在 Python 里比较 owner。
+def get_application(
+    session: Session,
+    application_id: int,
+    owner_id: int,
+) -> Application | None:
+    statement = select(Application).where(
+        Application.id == application_id,
+        Application.owner_id == owner_id,
+    )
+
+    return session.scalar(statement)
+
 
 # TODO(user): get_applications(session, owner_id, offset, limit) -> list[Application]
 #   在 get_items 的 offset/limit 基础上加 owner_id 过滤条件。
+def get_applications(
+    session: Session,
+    owner_id: int,
+    offset: int,
+    limit: int,
+) -> list[Application]:
+    statement = (
+        select(Application)
+        .where(Application.owner_id == owner_id)
+        .order_by(Application.id)
+        .offset(offset)
+        .limit(limit)
+    )
+
+    return list(session.scalars(statement).all())
 
 
 def update_application(
