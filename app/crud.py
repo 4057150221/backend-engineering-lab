@@ -1,68 +1,9 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import Application, Item, User
-from app.schemas import ApplicationCreate, ItemCreate, UserCreate
+from app.models import Application, User
+from app.schemas import ApplicationCreate, UserCreate
 from app.security import hash_password, verify_password
-
-
-def create_item(
-    session: Session,
-    item_data: ItemCreate,
-) -> Item:
-    db_item = Item(
-        title=item_data.title,
-        description=item_data.description,
-    )
-
-    session.add(db_item)
-    session.commit()
-    session.refresh(db_item)
-    return db_item
-
-
-def get_item(
-    session: Session,
-    item_id: int,
-) -> Item | None:
-    return session.get(Item, item_id)
-
-
-def get_items(
-    session: Session,
-    offset: int,
-    limit: int,
-) -> list[Item]:
-    statement = (
-        select(Item)
-        .order_by(Item.id)
-        .offset(offset)
-        .limit(limit)
-    )
-
-    return list(session.scalars(statement).all())
-
-
-def update_item(
-    session: Session,
-    db_item: Item,
-    item_data: ItemCreate,
-) -> Item:
-    db_item.title = item_data.title
-    db_item.description = item_data.description
-
-    session.commit()
-    session.refresh(db_item)
-
-    return db_item
-
-
-def delete_item(
-    session: Session,
-    db_item: Item,
-) -> None:
-    session.delete(db_item)
-    session.commit()
 
 
 def create_application(
@@ -85,8 +26,6 @@ def create_application(
     return db_application
 
 
-# TODO(user): get_application(session, application_id, owner_id) -> Application | None
-#   必须在同一个 WHERE 里同时过滤 id 和 owner_id，不要先查到再在 Python 里比较 owner。
 def get_application(
     session: Session,
     application_id: int,
@@ -100,8 +39,6 @@ def get_application(
     return session.scalar(statement)
 
 
-# TODO(user): get_applications(session, owner_id, offset, limit) -> list[Application]
-#   在 get_items 的 offset/limit 基础上加 owner_id 过滤条件。
 def get_applications(
     session: Session,
     owner_id: int,

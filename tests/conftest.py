@@ -7,7 +7,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.database import Base, get_session
 from app.main import app
-from app.models import Item, User
+from app.models import Application, User
 
 
 test_engine = create_engine(
@@ -38,5 +38,5 @@ app.dependency_overrides[get_session] = override_get_session
 @pytest.fixture(autouse=True)
 def clean_database() -> None:
     with TestSessionLocal.begin() as session:
-        session.execute(delete(Item))
+        session.execute(delete(Application))
         session.execute(delete(User))
