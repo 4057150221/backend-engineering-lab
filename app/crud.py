@@ -1,8 +1,8 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import Item, User
-from app.schemas import ItemCreate, UserCreate
+from app.models import Application, Item, User
+from app.schemas import ApplicationCreate, ItemCreate, UserCreate
 from app.security import hash_password, verify_password
 
 
@@ -62,6 +62,58 @@ def delete_item(
     db_item: Item,
 ) -> None:
     session.delete(db_item)
+    session.commit()
+
+
+def create_application(
+    session: Session,
+    application_data: ApplicationCreate,
+    owner_id: int,
+) -> Application:
+    db_application = Application(
+        company=application_data.company,
+        position=application_data.position,
+        status=application_data.status.value,
+        applied_at=application_data.applied_at,
+        notes=application_data.notes,
+        owner_id=owner_id,
+    )
+
+    session.add(db_application)
+    session.commit()
+    session.refresh(db_application)
+    return db_application
+
+
+# TODO(user): get_application(session, application_id, owner_id) -> Application | None
+#   必须在同一个 WHERE 里同时过滤 id 和 owner_id，不要先查到再在 Python 里比较 owner。
+
+# TODO(user): get_applications(session, owner_id, offset, limit) -> list[Application]
+#   在 get_items 的 offset/limit 基础上加 owner_id 过滤条件。
+
+
+def update_application(
+    session: Session,
+    db_application: Application,
+    application_data: ApplicationCreate,
+) -> Application:
+    db_application.company = application_data.company
+    db_application.position = application_data.position
+    db_application.status = application_data.status.value
+    db_application.applied_at = application_data.applied_at
+    db_application.notes = application_data.notes
+
+    session.commit()
+    session.refresh(db_application)
+
+    return db_application
+
+
+def delete_application(
+    session: Session,
+    db_application: Application,
+) -> None:
+    session.delete(db_application)
     session.commit()
 
 
