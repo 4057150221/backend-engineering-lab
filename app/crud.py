@@ -44,16 +44,31 @@ def get_applications(
     owner_id: int,
     offset: int,
     limit: int,
+    status: str | None = None,
+    company: str | None = None,
+    order_by: list | None = None,
 ) -> list[Application]:
     statement = (
         select(Application)
         .where(Application.owner_id == owner_id)
-        .order_by(Application.id)
-        .offset(offset)
-        .limit(limit)
     )
 
-    return list(session.scalars(statement).all())
+    if status is not None:
+        statement = statement.where(Application.status == status)
+
+    if company is not None:
+        statement = statement.where(
+            Application.company.ilike(f"%{company}%")
+        )
+
+    if order_by is not None:
+        statement = statement.order_by(*order_by)
+
+    return list(
+        session.scalars(
+            statement.offset(offset).limit(limit)
+        ).all()
+    )
 
 
 def update_application(

@@ -308,3 +308,201 @@ def test_delete_other_users_application_returns_404():
         headers=owner_headers,
     )
     assert check_response.status_code == 200
+
+
+def _create_many_applications(headers) -> list[dict]:
+    """创建 5 条投递记录用于分页/筛选/排序测试。"""
+    payloads = [
+        {"company": "Google", "position": "SDE", "status": "applied", "applied_at": "2026-09-15"},
+        {"company": "Acme Inc", "position": "Backend", "status": "interviewing", "applied_at": "2026-09-10"},
+        {"company": "Amazon", "position": "SDE", "status": "rejected", "applied_at": "2026-09-01"},
+        {"company": "Acme Corp", "position": "Frontend", "status": "applied", "applied_at": "2026-09-05"},
+        {"company": "StartupX", "position": "ML Engineer", "status": "saved", "applied_at": None},
+    ]
+    created = []
+    for p in payloads:
+        resp = client.post(
+            "/applications",
+            json=p,
+            headers=headers,
+        )
+        assert resp.status_code == 201
+        created.append(resp.json())
+    return created
+
+
+def test_filter_by_status():
+    headers = _auth_headers()
+    _create_many_applications(headers)
+
+    response = client.get(
+        "/applications",
+        params={"status": "applied"},
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 2
+    assert all(a["status"] == "applied" for a in data)
+
+
+def test_filter_by_company_partial_match():
+    headers = _auth_headers()
+    _create_many_applications(headers)
+
+    response = client.get(
+        "/applications",
+        params={"company": "acme"},
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 2
+    assert all("acme" in a["company"].lower() for a in data)
+
+
+def test_filter_by_company_case_insensitive():
+    headers = _auth_headers()
+    _create_many_applications(headers)
+
+    response = client.get(
+        "/applications",
+        params={"company": "ACME"},
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 2
+
+
+def test_filter_company_and_status():
+    headers = _auth_headers()
+    _create_many_applications(headers)
+
+    response = client.get(
+        "/applications",
+        params={"company": "acme", "status": "applied"},
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["company"] == "Acme Corp"
+
+
+def test_filter_by_status_no_match():
+    headers = _auth_headers()
+    _create_many_applications(headers)
+
+    response = client.get(
+        "/applications",
+        params={"status": "offer"},
+        headers=headers
+    )
+
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+def test_sort_by_applied_at_desc():
+    headers = _auth_headers()
+    apps = _create_many_applications(headers)
+
+    response = client.get("/applications", headers=headers)
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data[0]["company"] == "Google"  # 2026-09-15, newest first
+    assert data[-1]["company"] == "StartupX"  # NULL applied_at, last
+
+
+def test_sort_by_applied_at_asc():
+    headers = _auth_headers()
+    apps = _create_many_applications(headers)
+
+    response = client.get(
+        "/applications",
+        params={"sort": "applied_at"},
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data[0]["company"] == "Amazon"  # 2026-09-01, oldest first
+    assert data[-1]["company"] == "StartupX"  # NULL applied_at, last
+
+
+def test_sort_by_company_asc():
+    headers = _auth_headers()
+    _create_many_applications(headers)
+
+    response = client.get(
+        "/applications",
+        params={"sort": "company"},
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    companies = [a["company"] for a in response.json()]
+    assert companies == sorted(companies)
+
+
+def test_sort_by_status_desc_company_asc():
+    headers = _auth_headers()
+    _create_many_applications(headers)
+
+    response = client.get(
+        "/applications",
+        params={"sort": "-status,company"},
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    for i in range(len(data) - 1):
+        if data[i]["status"] == data[i + 1]["status"]:
+            assert data[i]["company"] <= data[i + 1]["company"]
+
+
+def test_sort_invalid_field_returns_422():
+    headers = _auth_headers()
+    _create_many_applications(headers)
+
+    response = client.get(
+        "/applications",
+        params={"sort": "salary"},
+        headers=headers,
+    )
+
+    assert response.status_code == 422
+
+
+def test_sort_invalid_format_returns_422():
+    headers = _auth_headers()
+    _create_many_applications(headers)
+
+    response = client.get(
+        "/applications",
+        params={"sort": "sql--"},
+        headers=headers,
+    )
+
+    assert response.status_code == 422
+
+
+def test_list_default_sort_without_params():
+    headers = _auth_headers()
+    _create_many_applications(headers)
+
+    response = client.get("/applications", headers=headers)
+
+    assert response.status_code == 200
+    data = response.json()
+    ids = [a["id"] for a in data]
+    # Default sort: -applied_at,id. All non-NULL applied_at sorted desc,
+    # ties broken by id asc, NULLs at the end
+    assert data[-1]["applied_at"] is None

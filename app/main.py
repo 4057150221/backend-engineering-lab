@@ -1,6 +1,8 @@
+import re
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jwt.exceptions import InvalidTokenError
+from sqlalchemy import case, desc
 from sqlalchemy.orm import Session
 
 from app import crud
@@ -14,6 +16,49 @@ from app.schemas import (
     UserRead,
 )
 from app.security import create_access_token, decode_access_token
+
+
+SORT_WHITELIST = {
+    "id": Application.id,
+    "company": Application.company,
+    "position": Application.position,
+    "status": Application.status,
+    "applied_at": Application.applied_at,
+}
+
+_SORT_FIELD_RE = re.compile(r"^-?[a-z_]+$")
+
+def _parse_sort(sort: str) -> list:
+    if not sort:
+        return [
+            case((Application.applied_at.is_(None), 1), else_=0),
+            desc(Application.applied_at),
+            Application.id,
+        ]
+
+    fields = sort.split(",")
+    clauses = []
+    for field in fields:
+        field = field.strip()
+        if not field:
+            continue
+        if not _SORT_FIELD_RE.match(field):
+            raise ValueError(f"Invalid sort field: '{field}'")
+        descending = field.startswith("-")
+        raw_name = field.lstrip("-")
+        if raw_name not in SORT_WHITELIST:
+            raise ValueError(f"Invalid sort field: '{raw_name}'")
+        column = SORT_WHITELIST[raw_name]
+
+        # 可空列用 CASE WHEN 保障跨数据库 NULL 排序一致
+        if hasattr(column, 'nullable') and column.nullable:
+            clauses.append(case((column.is_(None), 1), else_=0))
+
+        if descending:
+            clauses.append(desc(column))
+        else:
+            clauses.append(column)
+    return clauses
 
 
 def _get_application_or_404(
@@ -171,13 +216,24 @@ def read_applications(
     current_user: User = Depends(get_current_user),
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=10, ge=1, le=100),
+    status: str | None = Query(default=None),
+    company: str | None = Query(default=None),
+    sort: str = Query(default="-applied_at,id"),
     session: Session = Depends(get_session),
 ) -> list[Application]:
+    try:
+        order_by = _parse_sort(sort)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
     return crud.get_applications(
         session=session,
         owner_id=current_user.id,
         offset=offset,
         limit=limit,
+        status=status,
+        company=company,
+        order_by=order_by,
     )
 
 
